@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        
+        li {
+            list-style: none;
+            float: left;
+        }
+        
+        .box {
+            position: relative;
+            margin: 50px auto;
+            width: 300px;
+            height: 200px;
+            background-color: pink;
+            overflow: hidden;
+        }
+        
+        img {
+            width: 300px;
+            height: 200px;
+            vertical-align: middle;
+        }
+        
+        .box ul {
+            position: relative;
+            /* 此处为6张图的宽度 */
+            width: 1800px;
+            /* 由于有过渡的图片存在，默认初始左left-300px */
+            left: -300px;
+            height: 200px;
+        }
+        /* 左右按钮 */
+        
+        .leftRow,
+        .rightRow {
+            display: none;
+            text-align: center;
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            color: #000;
+            background-color: #fff;
+            opacity: .5;
+            transform: translate(0, -50%);
+            vertical-align: middle;
+            cursor: pointer;
+        }
+        
+        .leftRow {
+            left: 0;
+            top: 50%;
+        }
+        
+        .rightRow {
+            right: 0;
+            top: 50%;
+        }
+        /* 底下小圆点 */
+        
+        .box ol {
+            position: absolute;
+            left: 20px;
+            bottom: 10px;
+        }
+        
+        .box ol li {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            margin-right: 5px;
+            border: 1px solid rgba(255, 255, 255, .5);
+            cursor: pointer;
+        }
+        /* 当前选中的小圆点状态 */
+        
+        .current {
+            background-color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="box">
+        <ul>
+            <!-- 此张图拿来过渡 -->
+            <li>
+                <a href="javascript:;">
+                    <img src="./桌面壁纸/2.jpg" alt="">
+                </a>
+            </li>
+            <li>
+                <a href="javascript:;">
+                    <img src="./桌面壁纸/1.jpg" alt="">
+                </a>
+            </li>
+            <li>
+                <a href="javascript:;">
+                    <img src="./桌面壁纸/3.jpg" alt="">
+                </a>
+            </li>
+            <li>
+                <a href="javascript:;">
+                    <img src="./桌面壁纸/11.jpeg" alt="">
+                </a>
+            </li>
+            <li>
+                <a href="javascript:;">
+                    <img src="./桌面壁纸/2.jpg" alt="">
+                </a>
+            </li>
+            <!-- 此张图拿来过渡 -->
+            <li>
+                <a href="javascript:;">
+                    <img src="./桌面壁纸/1.jpg" alt="">
+                </a>
+            </li>
+        </ul>
+        <span class="leftRow"><</span>
+        <span class="rightRow">></span>
+        <ol>
+        </ol>
+    </div>
+    <!-- 导入动画 -->
+    <script src="./animate.js"></script>
+    <script>
+        // 轮播图要实现的几个功能：
+        // 1、经过图时左右按钮显示出来；
+        // 2、点击按钮左右滑动；
+        // 3、底下小圆圈跟着变色；
+        // 4、点击小圆圈也能播放张数；
+        // 5、不点击会自动播放，鼠标经过时停止自动播放；
+        // 补充的知识点：
+        // 1、element.click();手动调用element点击事件，配合定时器使用；
+        // 2、节流阀：利用回调函数，添加一个变量，锁住和解锁函数，。即当上一个动画内容执行完毕，才会去执行下一个；
+        // 开始设置一个 var flag = true;
+        // 然后 if(flag){flag = false;输入要操作的事件}；
+        // 利用回调动画函数执行完毕 flag = true;
+        //注意：伪数组不能用数组方法，遍历用for循环
+
+
+        // 代码如下：
+
+        // 定义全局变量
+        let that //接收实例对象this
+        let flag = true //节流阀装置
+        let timer //自动滚动定时器
+        let index = 0 //全局接收图片的index对应小圆点
+
+        // 创建类
+        class Switer {
+            constructor(id) {
+                that = this
+                this.box = id;
+                this.ul = id.querySelector('ul');
+                this.ol = id.querySelector('ol');
+                this.lis = this.ul.querySelectorAll('li');
+                this.leftRow = id.querySelector('.leftRow');
+                this.rightRow = id.querySelector('.rightRow');
+                this.widthUl = id.offsetWidth
+                this.init()
+            }
+
+            // 初始化
+            init() {
+                // 按钮显示
+                this.isShow()
+                    // 按钮隐藏
+                this.isDie()
+                    // 左点击滑动
+                this.leftRow.addEventListener('click', this.getLeft)
+                    // 右点击滑动
+                this.rightRow.addEventListener('click', this.getRight)
+                    // 自动轮播
+                this.autoGet()
+                    // 鼠标进入移除轮播
+                this.removeGet()
+                    // 鼠标离开继续轮播
+                this.againGet()
+                    // 小圆点
+                this.getCircle()
+                    //  动态更新当前小圆点样式
+                this.setCurrent()
+            }
+
+            //1、 鼠标经过显示左右按钮
+            isShow() {
+                this.box.addEventListener('mouseenter', () => {
+                    this.leftRow.style.display = 'block'
+                })
+                this.box.addEventListener('mouseenter', () => {
+                    this.rightRow.style.display = 'block'
+                })
+            }
+
+            // 2、鼠标离开时隐藏左右按钮
+            isDie() {
+                this.box.addEventListener('mouseleave', () => {
+                    this.leftRow.style.display = 'none'
+                })
+                this.box.addEventListener('mouseleave', () => {
+                    this.rightRow.style.display = 'none'
+                })
+            }
+
+            //3、 点击左按钮左滑动(注意left为负值)
+            getLeft() {
+                if (flag) {
+                    // (1)、为了防止多次快速点击导致移动出错，引入节流阀
+                    flag = false
+                        // 注意：此段代码是为了设置滑动过程图片对应的index值，下面小圆点也同步index的样式
+                    index > 0 ? index-- : (index = that.lis.length - 3)
+                    that.setCurrent() //滚动时调用current样式事件更新当前样式
+                        // （2）、调用轮播动画
+                    animate(that.ul, that.ul.offsetLeft + that.widthUl, function() {
+                        flag = true
+                            // （3）、如果已经是最后一张图则直接跳到倒数第二张图的位置（注意最后一张图是右点击来过渡的）
+                        if (that.ul.offsetLeft == 0 * that.widthUl) {
+                            that.ul.style.left = -(that.lis.length - 2) * that.widthUl + 'px'
+                        }
+                    })
+                }
+            }
+
+            // 4、 点击右按钮右滑动(注意left为负值)
+            getRight() {
+                if (flag) {
+                    // (1)、为了防止多次快速点击导致移动出错，引入节流阀
+                    flag = false
+                        // 注意：此段代码是为了设置滑动过程图片对应的index值，下面小圆点也同步index的样式
+                    index < that.lis.length - 3 ? index++ : index = 0
+                    that.setCurrent() //滚动时调用current样式事件更新当前样式
+                        // （2）、调用轮播动画
+                    animate(that.ul, that.ul.offsetLeft - that.widthUl, function() {
+                        flag = true
+                            // （3）、如果已经是最后一张图则直接跳到第二张图的位置（注意第一张图是右点击来过渡的）
+                        if (-that.ul.offsetLeft == (that.lis.length - 1) * that.widthUl) {
+                            that.ul.style.left = '-300px'
+                        }
+                    })
+                }
+            }
+
+            // 5、自动滚动事件
+            autoGet() {
+                timer = setInterval(() => {
+                    this.getRight()
+                }, 2000);
+            }
+
+            // 6、 鼠标进入移除自动轮播
+            removeGet() {
+                this.box.addEventListener('mouseenter', () => {
+                    clearInterval(timer, this.getRight)
+                })
+            }
+
+            // 7、鼠标离开继续轮播
+            againGet() {
+                this.box.addEventListener('mouseleave', () => {
+                    this.autoGet()
+                })
+            }
+
+            // 8、生成底部小圆点
+            getCircle() {
+                for (let i = 0; i < this.lis.length - 2; i++) {
+                    this.ol.appendChild(document.createElement('li'))
+                    console.log(this.ol); //此处我也不知为何一次性直接生成了所有的li
+                    // 10、点击事件
+                    this.ol.children[i].addEventListener('click', () => {
+                        animate(that.ul, -(i + 1) * that.widthUl)
+                        index = i //点击完更新index等于i
+                        this.setCurrent() //同时调用current样式事件更新当前样式
+                    })
+                }
+            }
+
+            // 9、设置小圆点的样式:排他思想(此处与上面生成小圆点分开写，因为要在滚动和初始化都调用)
+            setCurrent() {
+                for (let i = 0; i < this.ol.children.length; i++) {
+                    that.ol.children[i].className = ''
+                }
+                that.ol.children[index].className = 'current'
+            }
+        }
+
+        // 调用类
+        let test = new Switer(document.querySelector('.box'))
+    </script>
+</body>
+
+</html>
